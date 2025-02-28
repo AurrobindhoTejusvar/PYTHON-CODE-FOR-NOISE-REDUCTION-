@@ -1,0 +1,83 @@
+import numpy as np
+import scipy.io.wavfile as wav
+import scipy.signal as signal
+import matplotlib.pyplot as plt
+import sounddevice as sd
+
+# Load the noisy audio file using scipy.io.wavfile
+rate, audio_data = wav.read(
+    'C:/Users/aurro/OneDrive/Documents/Audacity/sample-3s.wav')
+
+
+if len(audio_data.shape) == 2:
+    audio_data = np.mean(audio_data, axis=1)
+
+# Normalize the audio data
+audio_data = audio_data / np.max(np.abs(audio_data))
+
+# Plot the original noisy audio
+plt.figure(figsize=(10, 4))
+plt.plot(audio_data)
+plt.title("Original Noisy Audio Signal")
+plt.xlabel("Sample")
+plt.ylabel("Amplitude")
+plt.show()
+
+# Function to apply a bandpass filter for noise reduction
+
+
+def bandpass_filter(data, lowcut, highcut, fs, order=5):
+    nyquist = 0.5 * fs
+    low = lowcut / nyquist
+    high = highcut / nyquist
+    b, a = signal.butter(order, [low, high], btype='band')
+    filtered_data = signal.lfilter(b, a, data)
+    return filtered_data
+
+# Function to plot the power spectrum
+
+
+def plot_power_spectrum(data, fs, title):
+    freqs, psd = signal.welch(data, fs, nperseg=1024)
+    plt.figure(figsize=(10, 4))
+    plt.semilogy(freqs, psd)
+    plt.title(title)
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Power/Frequency (dB/Hz)')
+    plt.grid(True)
+    plt.show()
+
+
+# Set parameters for the bandpass filter
+lowcut = 300.0  # Low cutoff frequency in Hz
+highcut = 3400.0  # High cutoff frequency in Hz
+
+# Apply the bandpass filter to the noisy audio signal
+filtered_audio = bandpass_filter(audio_data, lowcut, highcut, rate)
+
+# Plot the filtered audio
+plt.figure(figsize=(10, 4))
+plt.plot(filtered_audio)
+plt.title("Filtered Audio Signal")
+plt.xlabel("Sample")
+plt.ylabel("Amplitude")
+plt.show()
+
+# Plot the power spectrum of the original and filtered audio signals
+plot_power_spectrum(audio_data, rate, "Power Spectrum of Original Noisy Audio")
+plot_power_spectrum(filtered_audio, rate, "Power Spectrum of Filtered Audio")
+
+# Save the filtered audio to a new wav file using scipy.io.wavfile
+# Convert back to int16 format
+filtered_audio = np.int16(filtered_audio * 32767)
+wav.write('filtered_audio.wav', rate, filtered_audio)
+
+# Play the original noisy audio
+print("Playing Noisy Audio...")
+sd.play(audio_data, rate)
+sd.wait()  # Wait until the audio finishes playing
+
+# Play the filtered audio
+print("Playing Filtered Audio...")
+sd.play(filtered_audio, rate)
+sd.wait()  # Wait until the audio finishes playing
